@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Comment Cleaner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f4f4f1;
+        --panel: #ffffff;
+        --panel-2: #ececea;
+        --ink: #1d1f22;
+        --muted: #6d7278;
+        --faint: #9aa0a3;
+        --line: #e0e0da;
+        --accent: #177245;
+        --accent-ink: #ffffff;
+        --accent-soft: #e2f2e8;
+        --danger: #b3372e;
+        --code-bg: #fbfbfa;
+        --chip: #f0f0ec;
+        --shadow: 0 1px 2px rgba(20, 24, 20, .05), 0 8px 24px rgba(20, 24, 20, .05);
+        --radius: 14px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1113;
+          --panel: #17191d;
+          --panel-2: #1e2126;
+          --ink: #e9ebee;
+          --muted: #9aa1a9;
+          --faint: #6d747c;
+          --line: #262a30;
+          --accent: #3ecf7d;
+          --accent-ink: #0b1510;
+          --accent-soft: #16301f;
+          --danger: #e07a6f;
+          --code-bg: #0b0d0f;
+          --chip: #22262c;
+          --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+        }
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      button { font: inherit; cursor: pointer; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 308px minmax(0, 1fr);
+        gap: 18px;
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 20px clamp(12px, 3vw, 32px) 40px;
+        align-items: start;
+      }
+
+      /* ---------- aside ---------- */
+      aside { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 20px; }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+      .card h2 {
+        margin: 0 0 4px;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .card .hint { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+      .opt {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        width: 100%; padding: 9px 0; background: none; border: 0; text-align: left; color: var(--ink);
+      }
+      .opt + .opt { border-top: 1px solid var(--line); }
+      .opt .lbl { font-size: 14px; font-weight: 600; }
+      .opt .sub { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 1px; }
+      .switch {
+        flex: none; width: 42px; height: 24px; border-radius: 999px;
+        background: var(--panel-2); border: 1px solid var(--line); position: relative;
+        transition: background .15s ease;
+      }
+      .switch::after {
+        content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+        border-radius: 50%; background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,.25);
+        transition: transform .15s ease;
+      }
+      .opt[aria-checked="true"] .switch { background: var(--accent); border-color: var(--accent); }
+      .opt[aria-checked="true"] .switch::after { transform: translateX(18px); }
+
+      .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 6px; }
+      .stat { background: var(--chip); border-radius: 10px; padding: 10px 8px; text-align: center; }
+      .stat b { display: block; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .stat span { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+        color: var(--ink); font-weight: 700; font-size: 14px; padding: 10px 14px;
+        transition: filter .12s ease, background .12s ease;
+      }
+      .btn:hover { background: var(--panel-2); }
+      .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); width: 100%; }
+      .btn.primary:hover { filter: brightness(1.07); background: var(--accent); }
+      .btn.primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+      .btn svg { width: 16px; height: 16px; flex: none; }
+      .btn.small { padding: 7px 10px; font-size: 13px; border-radius: 8px; }
+      .icon-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent;
+        background: none; color: var(--muted);
+      }
+      .icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+      .icon-btn svg { width: 16px; height: 16px; }
+      .icon-btn.danger:hover { color: var(--danger); }
+
+      /* ---------- main ---------- */
+      main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+      .tabs { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 5px; width: fit-content; box-shadow: var(--shadow); }
+      .tabs button {
+        border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 14px;
+        padding: 8px 16px; border-radius: 8px;
+      }
+      .tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+
+      .dropzone {
+        border: 2px dashed var(--line); border-radius: var(--radius);
+        background: var(--panel); padding: 34px 20px; text-align: center;
+        transition: border-color .15s ease, background .15s ease; cursor: pointer;
+      }
+      .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
+      .dropzone .dz-icon {
+        width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 14px;
+        background: var(--accent-soft); color: var(--accent);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .dropzone .dz-icon svg { width: 26px; height: 26px; }
+      .dropzone p.big { margin: 0 0 4px; font-size: 17px; font-weight: 800; }
+      .dropzone p.small { margin: 0; font-size: 13px; color: var(--muted); }
+      .dropzone .linklike {
+        color: var(--accent); font-weight: 700; background: none; border: 0; padding: 0;
+        text-decoration: underline; text-underline-offset: 3px; font-size: 13px;
+      }
+      .zip-status {
+        margin-top: 14px; padding: 11px 14px; border-radius: 12px;
+        background: var(--accent-soft); color: var(--ink);
+        border: 1px solid var(--line); font-size: 13.5px; line-height: 1.5;
+      }
+      .zip-status b { font-variant-numeric: tabular-nums; }
+      .zip-status .muted-line { color: var(--muted); font-size: 12.5px; }
+
+      .file-list { display: flex; flex-direction: column; gap: 8px; }
+      .file-row {
+        display: flex; align-items: center; gap: 12px;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+        padding: 10px 12px; cursor: pointer; box-shadow: var(--shadow); text-align: left; width: 100%;
+      }
+      .file-row.selected { border-color: var(--accent); outline: 1px solid var(--accent); }
+      .file-row .ficon {
+        flex: none; width: 38px; height: 38px; border-radius: 9px; background: var(--chip);
+        display: flex; align-items: center; justify-content: center; color: var(--muted);
+        font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 600; text-transform: uppercase;
+        padding: 2px; text-align: center; overflow: hidden;
+      }
+      .file-row .fmeta { flex: 1; min-width: 0; }
+      .file-row .fname { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .file-row .fsub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .file-row .fsub .good { color: var(--accent); font-weight: 700; }
+      .file-row .fsub .bad { color: var(--danger); font-weight: 700; }
+      .empty-note { color: var(--muted); font-size: 14px; text-align: center; padding: 14px 0 2px; }
+
+      /* ---------- preview ---------- */
+      .preview { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+      .preview-head {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        padding: 10px 12px; border-bottom: 1px solid var(--line);
+      }
+      .preview-head .pname { font-weight: 800; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .preview-head .spacer { flex: 1; }
+      .seg { display: flex; background: var(--chip); border-radius: 9px; padding: 3px; }
+      .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+      .seg button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+      select.lang {
+        font: inherit; font-size: 13px; font-weight: 600; color: var(--ink);
+        background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; max-width: 210px;
+      }
+      .code-wrap { display: flex; max-height: 560px; overflow: auto; background: var(--code-bg); }
+      .gutter {
+        flex: none; text-align: right; padding: 14px 10px 14px 14px; color: var(--faint);
+        font-family: "JetBrains Mono", monospace; font-size: 12.5px; line-height: 1.65;
+        user-select: none; white-space: pre;
+      }
+      pre.code {
+        margin: 0; padding: 14px 16px 14px 4px; flex: 1;
+        font-family: "JetBrains Mono", monospace; font-size: 12.5px; line-height: 1.65;
+        white-space: pre; color: var(--ink);
+      }
+      .preview-foot {
+        display: flex; gap: 14px; flex-wrap: wrap; padding: 9px 14px;
+        border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted);
+      }
+      .preview-foot b { color: var(--ink); font-variant-numeric: tabular-nums; }
+      .preview-foot .good { color: var(--accent); font-weight: 700; }
+      .placeholder-box { padding: 44px 20px; text-align: center; color: var(--muted); font-size: 14px; }
+
+      /* ---------- paste ---------- */
+      .paste-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+      .paste-card textarea {
+        width: 100%; min-height: 240px; resize: vertical;
+        font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.6;
+        background: var(--code-bg); color: var(--ink);
+        border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+      }
+      .paste-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+      .paste-row input[type="text"] {
+        font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 9px;
+        border: 1px solid var(--line); background: var(--panel); color: var(--ink); width: 180px;
+      }
+      .toast {
+        position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);
+        background: var(--ink); color: var(--bg); font-weight: 700; font-size: 14px;
+        padding: 10px 18px; border-radius: 999px; opacity: 0; pointer-events: none;
+        transition: opacity .2s ease, transform .2s ease; z-index: 50; box-shadow: var(--shadow);
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+      @media (max-width: 860px) {
+        .layout { grid-template-columns: 1fr; padding-top: 14px; }
+        aside { position: static; }
+        .code-wrap { max-height: 440px; }
+        .preview-head .pname { flex-basis: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside>
+        <section class="card" aria-label="Налаштування очищення">
+          <h2>Що видаляти</h2>
+          <button class="opt" id="opt-line" role="switch" aria-checked="true">
+            <span><span class="lbl">Рядкові коментарі</span><span class="sub mono">// … &nbsp;# … &nbsp;-- …</span></span>
+            <span class="switch"></span>
+          </button>
+          <button class="opt" id="opt-block" role="switch" aria-checked="true">
+            <span><span class="lbl">Блокові коментарі</span><span class="sub mono">/* … */ &nbsp;&lt;!-- … --&gt;</span></span>
+            <span class="switch"></span>
+          </button>
+          <button class="opt" id="opt-docstrings" role="switch" aria-checked="false">
+            <span><span class="lbl">Docstrings у Python</span><span class="sub">окремі рядкові літерали на початку блоку</span></span>
+            <span class="switch"></span>
+          </button>
+          <button class="opt" id="opt-license" role="switch" aria-checked="true">
+            <span><span class="lbl">Залишати ліцензії</span><span class="sub mono">/*! … */, @license, Copyright</span></span>
+            <span class="switch"></span>
+          </button>
+          <button class="opt" id="opt-jsdoc" role="switch" aria-checked="false">
+            <span><span class="lbl">Залишати JSDoc</span><span class="sub mono">/** … */ з описами функцій</span></span>
+            <span class="switch"></span>
+          </button>
+        </section>
+
+        <section class="card" aria-label="Оформлення результату">
+          <h2>Оформлення</h2>
+          <button class="opt" id="opt-blank" role="switch" aria-checked="true">
+            <span><span class="lbl">Прибирати порожні рядки</span><span class="sub">рядки, де був лише коментар</span></span>
+            <span class="switch"></span>
+          </button>
+          <button class="opt" id="opt-trim" role="switch" aria-checked="true">
+            <span><span class="lbl">Обрізати пробіли в кінці рядків</span><span class="sub">у всьому файлі</span></span>
+            <span class="switch"></span>
+          </button>
+          <p class="hint" style="margin-top:10px">Рядки коду, тексти в лапках, шаблонні рядки, регулярні вирази та URL програма не чіпає: коментарі шукає справжній розбір коду, а не простий пошук по тексту.</p>
+        </section>
+
+        <section class="card" aria-label="Підсумок">
+          <h2>Підсумок</h2>
+          <div class="stats-grid">
+            <div class="stat"><b id="st-files">0</b><span>файлів</span></div>
+            <div class="stat"><b id="st-comments">0</b><span>коментарів</span></div>
+            <div class="stat"><b id="st-saved">0%</b><span>менше розмір</span></div>
+          </div>
+          <div style="height:12px"></div>
+          <button class="btn primary" id="btn-zip" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Завантажити все
+          </button>
+          <p class="hint" style="margin:10px 0 0" id="zip-hint">Кілька файлів завантажаться одним zip-архівом.</p>
+        </section>
+      </aside>
+
+      <main>
+        <div class="tabs" role="tablist" aria-label="Режим роботи">
+          <button role="tab" id="tab-files" aria-selected="true">Файли</button>
+          <button role="tab" id="tab-paste" aria-selected="false">Вставити код</button>
+        </div>
+
+        <section id="pane-files">
+          <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Вибрати файли з кодом">
+            <div class="dz-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+            </div>
+            <p class="big">Перетягніть файли або ZIP з цілим проєктом сюди</p>
+            <p class="small">Можна окремі файли, цілу папку або один .zip архів: він сам розпакується, коментарі почистяться в усіх файлах з кодом, а структура папок збережеться. Папки node_modules, .git, dist і build пропускаються. Все чиститься локально у браузері, файли нікуди не надсилаються.<br />
+            <button class="linklike" id="btn-folder" type="button">Вибрати папку проєкту</button> · <button class="linklike" id="btn-sample" type="button">Спочатку подивитись на прикладі</button></p>
+            <input type="file" id="file-input" multiple hidden />
+            <input type="file" id="folder-input" webkitdirectory hidden />
+          </div>
+
+          <div class="zip-status" id="zip-status" hidden></div>
+
+          <div style="height:14px"></div>
+          <div class="file-list" id="file-list">
+            <p class="empty-note" id="empty-note">Тут зʼявляться вибрані файли з результатом очищення</p>
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="preview" id="preview">
+            <div class="preview-head">
+              <span class="pname mono" id="pv-name">Попередній перегляд</span>
+              <span class="spacer"></span>
+              <select class="lang" id="pv-lang" aria-label="Мова коду" disabled></select>
+              <div class="seg" role="tablist" aria-label="Вид перегляду">
+                <button id="seg-after" aria-selected="true">Після</button>
+                <button id="seg-before" aria-selected="false">До</button>
+              </div>
+              <button class="btn small" id="btn-copy" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Копіювати
+              </button>
+              <button class="btn small" id="btn-download" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Завантажити
+              </button>
+            </div>
+            <div class="code-wrap" id="code-wrap">
+              <div class="placeholder-box" style="flex:1">Виберіть файл у списку, щоб побачити очищений код</div>
+            </div>
+            <div class="preview-foot" id="pv-foot" hidden>
+              <span>Коментарів видалено: <b id="pf-comments">0</b></span>
+              <span>Рядків прибрано: <b id="pf-lines">0</b></span>
+              <span>Розмір: <b id="pf-size">0 → 0</b> <span class="good" id="pf-pct"></span></span>
+            </div>
+          </div>
+        </section>
+
+        <section id="pane-paste" hidden>
+          <div class="paste-card">
+            <textarea id="paste-area" class="mono" placeholder="Вставте сюди код, наприклад функцію з коментарями…" spellcheck="false"></textarea>
+            <div class="paste-row">
+              <select class="lang" id="paste-lang" aria-label="Мова коду"></select>
+              <input type="text" id="paste-name" value="snippet" aria-label="Назва файла" />
+              <button class="btn primary" id="btn-paste-add" style="width:auto">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                Очистити
+              </button>
+            </div>
+            <p class="hint" style="margin:12px 0 0; color:var(--muted); font-size:13px">Код додасться у список файлів ліворуч: його можна буде переглянути, скопіювати або завантажити як звичайний файл.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      "use strict";
+
+      /* ============================================================
+         Розбір коду: коментарі шукає скінченний автомат, який знає
+         про рядки, шаблонні рядки та регулярні вирази, тому текст
+         у лапках і URL з // всередині не страждають.
+         ============================================================ */
+
+      function Out() {
+        this.s = "";
+        this.flags = []; // per output line: {code, comment}
+        this.line = 0;
+        this.count = 0;
+      }
+      Out.prototype.ensure = function () {
+        if (!this.flags[this.line]) this.flags[this.line] = { code: false, comment: false };
+      };
+      Out.prototype.emit = function (str) {
+        for (var k = 0; k < str.length; k++) {
+          var c = str[k];
+          this.s += c;
+          if (c === "\n") { this.line++; this.ensure(); }
+          else if (c.trim() !== "") { this.ensure(); this.flags[this.line].code = true; }
+        }
+        this.ensure();
+      };
+      Out.prototype.markComment = function () {
+        this.ensure();
+        this.flags[this.line].comment = true;
+      };
+      Out.prototype.emitCommentNewlines = function (text) {
+        var nl = (text.match(/\n/g) || []).length;
+        for (var k = 0; k < nl; k++) { this.emit("\n"); this.markComment(); }
+        return nl;
+      };
+      Out.prototype.lastChar = function () { return this.s.charAt(this.s.length - 1); };
+
+      function keepComment(text, o) {
+        if (o.keepLicense && (/^\/\*?!/.test(text) || /@license/i.test(text) || /copyright/i.test(text) || /^<!--!/.test(text))) return true;
+        if (o.keepJsdoc && /^\/\*\*/.test(text)) return true;
+        return false;
+      }
+
+      function finalize(out, src, o) {
+        var lines = out.s.split("\n");
+        var removedLines = 0;
+        var res = [];
+        for (var idx = 0; idx < lines.length; idx++) {
+          var f = out.flags[idx];
+          var line = lines[idx];
+          if (o.stripBlank && f && f.comment && !f.code) { removedLines++; continue; }
+          if (o.trimTrail || (f && f.comment)) line = line.replace(/[ \t]+$/, "");
+          res.push(line);
+        }
+        var text = res.join("\n");
+        if (/\n$/.test(src)) text = text.replace(/\n+$/, "") + "\n";
+        return { text: text, comments: out.count, removedLines: removedLines };
+      }
+
+      /* ---------- JS / TS / C-подібні / PHP ---------- */
+      var REGEX_KEYWORDS = { "return":1, "typeof":1, "instanceof":1, "in":1, "of":1, "new":1, "delete":1, "void":1, "yield":1, "await":1, "case":1, "throw":1, "else":1, "do":1 };
+
+      function stripJsLike(src, o) {
+        var out = new Out();
+        var i = 0, n = src.length;
+        var prev = "start"; // start | op | operand | keyword
+        var word = "";
+        var stack = [];   // {kind:'tpl'} | {kind:'expr', braceCount}
+        var braces = [];  // 'obj' | 'blk'
+        var mode = "code"; // code | tpl
+
+        function endWord() {
+          if (word) { prev = REGEX_KEYWORDS[word] ? "keyword" : "operand"; word = ""; }
+        }
+
+        while (i < n) {
+          var ch = src[i];
+
+          if (mode === "tpl") {
+            if (ch === "\\") { out.emit(src.substr(i, 2)); i += 2; continue; }
+            if (ch === "`") { out.emit("`"); i++; stack.pop(); mode = "code"; prev = "operand"; continue; }
+            if (ch === "$" && src[i + 1] === "{") {
+              out.emit("${"); i += 2;
+              stack.push({ kind: "expr", braceCount: braces.length });
+              mode = "code"; prev = "op"; continue;
+            }
+            out.emit(ch); i++; continue;
+          }
+
+          /* --- code mode --- */
+          if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n" || ch === "\f" || ch === "\v") {
+            out.emit(ch); i++; continue;
+          }
+
+          if (ch === "/" && src[i + 1] === "/" && o.line) {
+            endWord();
+            var j1 = i; while (j1 < n && src[j1] !== "\n") j1++;
+            var t1 = src.slice(i, j1);
+            out.markComment();
+            if (keepComment(t1, o)) out.emit(t1); else out.count++;
+            i = j1; continue;
+          }
+
+          if (ch === "/" && src[i + 1] === "*" && o.block) {
+            endWord();
+            var j2 = src.indexOf("*/", i + 2);
+            j2 = j2 === -1 ? n : j2 + 2;
+            var t2 = src.slice(i, j2);
+            out.markComment();
+            if (keepComment(t2, o)) { out.emit(t2); }
+            else {
+              out.count++;
+              if (t2.indexOf("\n") !== -1) { out.emitCommentNewlines(t2); }
+              else {
+                var before = out.lastChar(), after = src[j2];
+                if (before && /\S/.test(before) && after && /[A-Za-z0-9_$]/.test(after)) out.emit(" ");
+              }
+            }
+            i = j2; continue;
+          }
+
+          if (o.hash && ch === "#") {
+            endWord();
+            var j3 = i; while (j3 < n && src[j3] !== "\n") j3++;
+            var t3 = src.slice(i, j3);
+            out.markComment();
+            if (keepComment(t3, o)) out.emit(t3); else out.count++;
+            i = j3; continue;
+          }
+
+          if (ch === "'" || ch === '"') {
+            endWord();
+            var q = ch, j4 = i + 1;
+            while (j4 < n) {
+              if (src[j4] === "\\") { j4 += 2; continue; }
+              if (src[j4] === q) { j4++; break; }
+              if (src[j4] === "\n") break;
+              j4++;
+            }
+            out.emit(src.slice(i, j4)); i = j4; prev = "operand"; continue;
+          }
+
+          if (ch === "`") {
+            endWord();
+            out.emit("`"); i++;
+            stack.push({ kind: "tpl" });
+            mode = "tpl"; continue;
+          }
+
+          if (ch === "/") {
+            if (prev === "operand") { endWord(); out.emit("/"); i++; prev = "op"; continue; }
+            endWord();
+            var j5 = i + 1, inClass = false;
+            while (j5 < n) {
+              var c5 = src[j5];
+              if (c5 === "\\") { j5 += 2; continue; }
+              if (c5 === "[") inClass = true;
+              else if (c5 === "]") inClass = false;
+              else if (c5 === "/" && !inClass) { j5++; break; }
+              else if (c5 === "\n") break;
+              j5++;
+            }
+            while (j5 < n && /[a-z]/i.test(src[j5])) j5++;
+            out.emit(src.slice(i, j5)); i = j5; prev = "operand"; continue;
+          }
+
+          if (/[A-Za-z_$]/.test(ch) || (word && /[0-9]/.test(ch))) {
+            word += ch; out.emit(ch); i++; continue;
+          }
+          if (/[0-9]/.test(ch)) { endWord(); out.emit(ch); i++; prev = "operand"; continue; }
+
+          endWord();
+          if (ch === "{") {
+            braces.push(prev === "operand" ? "blk" : "obj");
+            out.emit(ch); i++; prev = "op"; continue;
+          }
+          if (ch === "}") {
+            var top = stack[stack.length - 1];
+            if (top && top.kind === "expr" && braces.length === top.braceCount) {
+              stack.pop(); out.emit(ch); i++; mode = "tpl"; continue;
+            }
+            var kind = braces.pop();
+            out.emit(ch); i++;
+            prev = kind === "obj" ? "operand" : "op";
+            continue;
+          }
+          if (ch === ")" || ch === "]") { out.emit(ch); i++; prev = "operand"; continue; }
+          out.emit(ch); i++; prev = "op";
+        }
+        return finalize(out, src, o);
+      }
+
+      /* ---------- Python ---------- */
+      function stripPython(src, o) {
+        var out = new Out();
+        var i = 0, n = src.length;
+
+        function lineStartIsBlank(pos) {
+          var ls = src.lastIndexOf("\n", pos - 1) + 1;
+          return /^\s*$/.test(src.slice(ls, pos));
+        }
+
+        while (i < n) {
+          var ch = src[i];
+
+          if (ch === "#" && o.line) {
+            if (i === 0 && src[i + 1] === "!") { // shebang лишаємо
+              var je = i; while (je < n && src[je] !== "\n") je++;
+              out.emit(src.slice(i, je)); i = je; continue;
+            }
+            var j1 = i; while (j1 < n && src[j1] !== "\n") j1++;
+            out.markComment();
+            out.count++;
+            i = j1; continue;
+          }
+
+          var m = /^([bBuUrRfF]{0,2})('''|"""|'|")/.exec(src.slice(i, i + 4));
+          if (m && (ch === "'" || ch === '"' || /[bBuUrRfF]/.test(ch))) {
+            var prefix = m[1], quote = m[2];
+            var raw = /[rR]/.test(prefix);
+            var triple = quote.length === 3;
+            var start = i;
+            var j = i + prefix.length + quote.length;
+            if (triple) {
+              while (j < n) {
+                if (!raw && src[j] === "\\") { j += 2; continue; }
+                if (src.substr(j, 3) === quote) { j += 3; break; }
+                j++;
+              }
+            } else {
+              while (j < n) {
+                if (!raw && src[j] === "\\") { j += 2; continue; }
+                if (src[j] === quote) { j++; break; }
+                if (src[j] === "\n") break;
+                j++;
+              }
+            }
+            var text = src.slice(start, j);
+            var standalone = lineStartIsBlank(start) && /^\s*(#[^\n]*)?(\n|$)/.test(src.slice(j));
+            if (o.docstrings && standalone) {
+              out.markComment();
+              out.count++;
+              out.emitCommentNewlines(text);
+              i = j; continue;
+            }
+            out.emit(text); i = j; continue;
+          }
+
+          out.emit(ch); i++;
+        }
+        return finalize(out, src, o);
+      }
+
+      /* ---------- CSS / SCSS ---------- */
+      function stripCss(src, o) {
+        var out = new Out();
+        var i = 0, n = src.length;
+        while (i < n) {
+          var ch = src[i];
+          if (ch === "'" || ch === '"') {
+            var q = ch, j = i + 1;
+            while (j < n) {
+              if (src[j] === "\\") { j += 2; continue; }
+              if (src[j] === q) { j++; break; }
+              if (src[j] === "\n") break;
+              j++;
+            }
+            out.emit(src.slice(i, j)); i = j; continue;
+          }
+          if (o.scss && ch === "/" && src[i + 1] === "/" && o.line) {
+            var j1 = i; while (j1 < n && src[j1] !== "\n") j1++;
+            out.markComment(); out.count++;
+            i = j1; continue;
+          }
+          if (ch === "/" && src[i + 1] === "*" && o.block) {
+            var j2 = src.indexOf("*/", i + 2);
+            j2 = j2 === -1 ? n : j2 + 2;
+            var t = src.slice(i, j2);
+            out.markComment();
+            if (keepComment(t, o)) out.emit(t);
+            else {
+              out.count++;
+              if (t.indexOf("\n") !== -1) out.emitCommentNewlines(t);
+              else {
+                var before = out.lastChar(), after = src[j2];
+                if (before && /\S/.test(before) && after && /[A-Za-z0-9_$#.%]/.test(after)) out.emit(" ");
+              }
+            }
+            i = j2; continue;
+          }
+          out.emit(ch); i++;
+        }
+        return finalize(out, src, o);
+      }
+
+      /* ---------- HTML / XML ---------- */
+      function stripHtml(src, o) {
+        var out = new Out();
+        var i = 0, n = src.length;
+        while (i < n) {
+          if (o.block && src.substr(i, 4) === "<!--") {
+            var end = src.indexOf("-->", i + 4);
+            end = end === -1 ? n : end + 3;
+            var t = src.slice(i, end);
+            var inner = t.slice(4, -3).replace(/^\s+/, "");
+            out.markComment();
+            if (keepComment(t, o) || inner.indexOf("[if") === 0 || inner.indexOf("!") === 0) out.emit(t);
+            else { out.count++; out.emitCommentNewlines(t); }
+            i = end; continue;
+          }
+          out.emit(src[i]); i++;
+        }
+        return finalize(out, src, o);
+      }
+
+      /* ---------- Shell / YAML / Ruby (#) ---------- */
+      function stripHash(src, o) {
+        var out = new Out();
+        var i = 0, n = src.length;
+        var quote = null;
+        while (i < n) {
+          var ch = src[i];
+          if (quote) {
+            if (quote === '"' && ch === "\\") { out.emit(src.substr(i, 2)); i += 2; continue; }
+            out.emit(ch);
+            if (ch === quote) quote = null;
+            i++; continue;
+          }
+          if (ch === "'" || ch === '"' || ch === "`") { quote = ch; out.emit(ch); i++; continue; }
+          if (ch === "#" && o.line) {
+            var prevCh = i === 0 ? "\n" : src[i - 1];
+            if (i === 0 && src[i + 1] === "!") {
+              var je = i; while (je < n && src[je] !== "\n") je++;
+              out.emit(src.slice(i, je)); i = je; continue;
+            }
+            if (prevCh === "\n" || prevCh === " " || prevCh === "\t" || prevCh === "\r") {
+              var j = i; while (j < n && src[j] !== "\n") j++;
+              out.markComment(); out.count++;
+              i = j; continue;
+            }
+          }
+          out.emit(ch); i++;
+        }
+        return finalize(out, src, o);
+      }
+
+      /* ---------- SQL ---------- */
+      function stripSql(src, o) {
+        var out = new Out();
+        var i = 0, n = src.length;
+        while (i < n) {
+          var ch = src[i];
+          if (ch === "'" || ch === '"' || ch === "`") {
+            var q = ch, j = i + 1;
+            while (j < n) {
+              if (src[j] === q) {
+                if (src[j + 1] === q) { j += 2; continue; }
+                j++; break;
+              }
+              j++;
+            }
+            out.emit(src.slice(i, j)); i = j; continue;
+          }
+          if (ch === "-" && src[i + 1] === "-" && o.line && (i + 2 >= n || /[\s]/.test(src[i + 2]))) {
+            var j1 = i; while (j1 < n && src[j1] !== "\n") j1++;
+            out.markComment(); out.count++;
+            i = j1; continue;
+          }
+          if (ch === "/" && src[i + 1] === "*" && o.block) {
+            var j2 = src.indexOf("*/", i + 2);
+            j2 = j2 === -1 ? n : j2 + 2;
+            var t = src.slice(i, j2);
+            out.markComment();
+            if (keepComment(t, o)) out.emit(t);
+            else { out.count++; out.emitCommentNewlines(t); }
+            i = j2; continue;
+          }
+          out.emit(ch); i++;
+        }
+        return finalize(out, src, o);
+      }
+
+      /* ---------- реєстр мов ---------- */
+      var LANGS = {
+        js:    { name: "JavaScript / TypeScript", ext: "js",  exts: ["js","jsx","ts","tsx","mjs","cjs","mts","cts","json","jsonc"], run: function (s, o) { return stripJsLike(s, o); } },
+        clike: { name: "C, C++, Java, Go, Rust, C#…", ext: "c", exts: ["c","h","cpp","cc","cxx","hpp","cs","java","go","rs","swift","kt","kts","scala","dart","m","mm"], run: function (s, o) { return stripJsLike(s, o); } },
+        php:   { name: "PHP", ext: "php", exts: ["php"], run: function (s, o) { var oo = Object.assign({}, o, { hash: true }); return stripJsLike(s, oo); } },
+        py:    { name: "Python", ext: "py", exts: ["py","pyw"], run: function (s, o) { return stripPython(s, o); } },
+        css:   { name: "CSS", ext: "css", exts: ["css"], run: function (s, o) { return stripCss(s, o); } },
+        scss:  { name: "SCSS / Less", ext: "scss", exts: ["scss","less","sass"], run: function (s, o) { var oo = Object.assign({}, o, { scss: true }); return stripCss(s, oo); } },
+        html:  { name: "HTML / XML", ext: "html", exts: ["html","htm","xml","svg","vue","svelte","xhtml"], run: function (s, o) { return stripHtml(s, o); } },
+        shell: { name: "Shell / YAML / Ruby / TOML", ext: "sh", exts: ["sh","bash","zsh","rb","yml","yaml","toml","ini","cfg","conf","pl","pm","env"], run: function (s, o) { return stripHash(s, o); } },
+        sql:   { name: "SQL", ext: "sql", exts: ["sql"], run: function (s, o) { return stripSql(s, o); } }
+      };
+      var EXT2LANG = {};
+      Object.keys(LANGS).forEach(function (k) {
+        LANGS[k].exts.forEach(function (e) { EXT2LANG[e] = k; });
+      });
+      function detectLang(name) {
+        var m = /\.([A-Za-z0-9]+)$/.exec(name || "");
+        if (m && EXT2LANG[m[1].toLowerCase()]) return EXT2LANG[m[1].toLowerCase()];
+        return "js";
+      }
+
+      /* ============================================================
+         Стан і інтерфейс
+         ============================================================ */
+      var options = { line: true, block: true, docstrings: false, keepLicense: true, keepJsdoc: false, stripBlank: true, trimTrail: true };
+      var files = [];
+      var passthrough = []; // файли з архіву без коду (картинки, шрифти тощо): йдуть у результат без змін
+      var lastZipBase = ""; // імʼя останнього завантаженого zip без розширення
+      var selectedId = null;
+      var viewMode = "after";
+      var nextId = 1;
+
+      var $ = function (id) { return document.getElementById(id); };
+      var enc = new TextEncoder();
+      function byteSize(s) { return enc.encode(s).length; }
+      function fmtSize(b) {
+        if (b < 1024) return b + " Б";
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1).replace(".", ",") + " КБ";
+        return (b / 1024 / 1024).toFixed(2).replace(".", ",") + " МБ";
+      }
+      function extOf(name) {
+        var m = /\.([A-Za-z0-9]+)$/.exec(name || "");
+        return m ? m[1].toLowerCase() : "txt";
+      }
+
+      function toast(msg) {
+        var t = $("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(t._h);
+        t._h = setTimeout(function () { t.classList.remove("show"); }, 2200);
+      }
+
+      function cleanFile(f) {
+        if (f.error) { f.cleaned = ""; f.comments = 0; f.removedLines = 0; return; }
+        try {
+          var r = LANGS[f.lang].run(f.src, options);
+          f.cleaned = r.text;
+          f.comments = r.comments;
+          f.removedLines = r.removedLines;
+        } catch (e) {
+          f.error = "Не вдалося обробити файл";
+          f.cleaned = ""; f.comments = 0; f.removedLines = 0;
+        }
+      }
+      function recleanAll() {
+        files.forEach(cleanFile);
+        renderList(); renderStats(); renderPreview();
+      }
+
+      /* ---------- перемикачі налаштувань ---------- */
+      var OPT_BIND = [
+        ["opt-line", "line"], ["opt-block", "block"], ["opt-docstrings", "docstrings"],
+        ["opt-license", "keepLicense"], ["opt-jsdoc", "keepJsdoc"],
+        ["opt-blank", "stripBlank"], ["opt-trim", "trimTrail"]
+      ];
+      OPT_BIND.forEach(function (pair) {
+        var el = $(pair[0]);
+        el.addEventListener("click", function () {
+          var key = pair[1];
+          options[key] = !options[key];
+          el.setAttribute("aria-checked", String(options[key]));
+          recleanAll();
+        });
+      });
+
+      /* ---------- вибір файлів ---------- */
+      var dropzone = $("dropzone"), fileInput = $("file-input"), folderInput = $("folder-input");
+      dropzone.addEventListener("click", function (e) {
+        if (e.target.id === "btn-sample" || e.target.id === "btn-folder") return;
+        fileInput.click();
+      });
+      $("btn-folder").addEventListener("click", function (e) {
+        e.stopPropagation();
+        folderInput.click();
+      });
+      folderInput.addEventListener("change", function () {
+        addFiles(folderInput.files);
+        folderInput.value = "";
+      });
+      dropzone.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+      });
+      ["dragenter", "dragover"].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.add("drag"); });
+      });
+      ["dragleave", "drop"].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.remove("drag"); });
+      });
+      dropzone.addEventListener("drop", function (e) {
+        if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+      });
+      fileInput.addEventListener("change", function () {
+        addFiles(fileInput.files);
+        fileInput.value = "";
+      });
+      document.addEventListener("dragover", function (e) { e.preventDefault(); });
+      document.addEventListener("drop", function (e) { e.preventDefault(); });
+
+      function makeFileObj(name, path, text) {
+        var f = {
+          id: nextId++, name: name, path: path || name, lang: detectLang(name),
+          src: text, cleaned: "", comments: 0, removedLines: 0, error: null
+        };
+        if (text.indexOf("\0") !== -1) f.error = "Схоже на бінарний файл, не текст з кодом";
+        else if (byteSize(text) > 5 * 1024 * 1024) f.error = "Файл більший за 5 МБ";
+        return f;
+      }
+
+      function readSingleFile(file) {
+        return new Promise(function (resolve) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            var path = file.webkitRelativePath || file.name;
+            var f = makeFileObj(file.name, path, String(reader.result || ""));
+            files.push(f);
+            cleanFile(f);
+            resolve();
+          };
+          reader.onerror = function () { resolve(); };
+          reader.readAsText(file);
+        });
+      }
+
+      /* ============================================================
+         Мінімальний zip своїми силами: читання (stored + deflate
+         через DecompressionStream) і запис (stored + CRC32).
+         ============================================================ */
+      var crcTable = null;
+      function crc32(u8) {
+        if (!crcTable) {
+          crcTable = [];
+          for (var n = 0; n < 256; n++) {
+            var c = n;
+            for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            crcTable[n] = c >>> 0;
+          }
+        }
+        var crc = 0xFFFFFFFF;
+        for (var i = 0; i < u8.length; i++) crc = crcTable[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8);
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+      }
+      function inflateRaw(u8) {
+        if (typeof DecompressionStream === "undefined") return Promise.reject(new Error("no-inflate"));
+        var stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        return new Response(stream).arrayBuffer().then(function (buf) { return new Uint8Array(buf); });
+      }
+      function readZipEntries(file) {
+        return file.arrayBuffer().then(function (buf) {
+          var u8 = new Uint8Array(buf);
+          var dv = new DataView(buf);
+          var eocd = -1;
+          var start = Math.max(0, u8.length - 65557);
+          for (var i = u8.length - 22; i >= start; i--) {
+            if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+          }
+          if (eocd === -1) throw new Error("not-zip");
+          var count = dv.getUint16(eocd + 10, true);
+          var cdOff = dv.getUint32(eocd + 16, true);
+          if (count === 0xFFFF || cdOff === 0xFFFFFFFF) throw new Error("zip64");
+          var dec = new TextDecoder();
+          var metas = [];
+          var p = cdOff;
+          for (var e = 0; e < count; e++) {
+            if (p + 46 > u8.length || dv.getUint32(p, true) !== 0x02014b50) break;
+            var nameLen = dv.getUint16(p + 28, true);
+            var extraLen = dv.getUint16(p + 30, true);
+            var commLen = dv.getUint16(p + 32, true);
+            metas.push({
+              path: dec.decode(u8.subarray(p + 46, p + 46 + nameLen)),
+              method: dv.getUint16(p + 10, true),
+              compSize: dv.getUint32(p + 20, true),
+              lhOff: dv.getUint32(p + 42, true)
+            });
+            p += 46 + nameLen + extraLen + commLen;
+          }
+          var results = [];
+          var chain = Promise.resolve();
+          metas.forEach(function (m) {
+            chain = chain.then(function () {
+              if (/\/$/.test(m.path)) return null;
+              if (m.lhOff + 30 > u8.length) return null;
+              var lhName = dv.getUint16(m.lhOff + 26, true);
+              var lhExtra = dv.getUint16(m.lhOff + 28, true);
+              var dataOff = m.lhOff + 30 + lhName + lhExtra;
+              var comp = u8.subarray(dataOff, dataOff + m.compSize);
+              if (m.method === 0) { results.push({ path: m.path, data: comp.slice() }); return null; }
+              if (m.method === 8) {
+                return inflateRaw(comp).then(function (raw) {
+                  results.push({ path: m.path, data: raw });
+                }, function () { /* пошкоджений запис пропускаємо */ });
+              }
+              return null;
+            });
+          });
+          return chain.then(function () { return results; });
+        });
+      }
+      function buildZipBlob(entries) {
+        var parts = [], central = [], offset = 0, cdSize = 0;
+        entries.forEach(function (en) {
+          var nameU8 = enc.encode(en.path);
+          var data = en.data;
+          var crc = crc32(data);
+          var lh = new DataView(new ArrayBuffer(30));
+          lh.setUint32(0, 0x04034b50, true);
+          lh.setUint16(4, 20, true);
+          lh.setUint16(6, 0x0800, true);
+          lh.setUint16(8, 0, true);
+          lh.setUint32(14, crc, true);
+          lh.setUint32(18, data.length, true);
+          lh.setUint32(22, data.length, true);
+          lh.setUint16(26, nameU8.length, true);
+          lh.setUint16(28, 0, true);
+          parts.push(new Uint8Array(lh.buffer), nameU8, data);
+          var ch = new DataView(new ArrayBuffer(46));
+          ch.setUint32(0, 0x02014b50, true);
+          ch.setUint16(4, 20, true);
+          ch.setUint16(6, 20, true);
+          ch.setUint16(8, 0x0800, true);
+          ch.setUint16(10, 0, true);
+          ch.setUint32(16, crc, true);
+          ch.setUint32(20, data.length, true);
+          ch.setUint32(24, data.length, true);
+          ch.setUint16(28, nameU8.length, true);
+          ch.setUint32(42, offset, true);
+          central.push(new Uint8Array(ch.buffer), nameU8);
+          offset += 30 + nameU8.length + data.length;
+          cdSize += 46 + nameU8.length;
+        });
+        var eocd = new DataView(new ArrayBuffer(22));
+        eocd.setUint32(0, 0x06054b50, true);
+        eocd.setUint16(8, entries.length, true);
+        eocd.setUint16(10, entries.length, true);
+        eocd.setUint32(12, cdSize, true);
+        eocd.setUint32(16, offset, true);
+        return new Blob(parts.concat(central, [new Uint8Array(eocd.buffer)]), { type: "application/zip" });
+      }
+
+      /* ---------- цілий проєкт одним zip ---------- */
+      var SKIP_DIRS = { "node_modules": 1, ".git": 1, "dist": 1, "build": 1, ".next": 1, "coverage": 1, ".cache": 1, ".turbo": 1, "out": 1 };
+      function skipPath(path) {
+        var parts = path.split("/");
+        for (var i = 0; i < parts.length; i++) if (SKIP_DIRS[parts[i]]) return true;
+        var base = parts[parts.length - 1];
+        if (!base || base === ".DS_Store" || base === "Thumbs.db") return true;
+        return false;
+      }
+
+      function setZipStatus(parts, muted) {
+        var box = $("zip-status");
+        box.innerHTML = "";
+        if (!parts) { box.hidden = true; return; }
+        box.hidden = false;
+        parts.forEach(function (nd) {
+          if (typeof nd === "string") box.appendChild(document.createTextNode(nd));
+          else { var b = document.createElement("b"); b.textContent = nd.b; box.appendChild(b); }
+        });
+        if (muted) {
+          box.appendChild(document.createElement("br"));
+          var sp = document.createElement("span");
+          sp.className = "muted-line";
+          sp.textContent = muted;
+          box.appendChild(sp);
+        }
+      }
+
+      function addZipArchive(file) {
+        lastZipBase = file.name.replace(/\.zip$/i, "") || "project";
+        setZipStatus(["Розпаковую ", { b: lastZipBase + ".zip" }, "…"]);
+        return readZipEntries(file).then(function (entries) {
+          var codeCount = 0, passCount = 0, skipped = 0;
+          var dec = new TextDecoder();
+          entries.forEach(function (en) {
+            var path = en.path.replace(/\\/g, "/");
+            if (skipPath(path)) { skipped++; return; }
+            var base = path.split("/").pop();
+            if (EXT2LANG[extOf(base)]) {
+              var f = makeFileObj(base, path, dec.decode(en.data));
+              if (f.error) { skipped++; return; }
+              files.push(f);
+              cleanFile(f);
+              codeCount++;
+            } else {
+              passthrough.push({ path: path, data: en.data });
+              passCount++;
+            }
+          });
+          var parts = [{ b: lastZipBase + ".zip" }, " готовий: очищено ", { b: String(codeCount) }, " файлів з кодом"];
+          if (passCount) parts.push(", ще ", { b: String(passCount) }, " файлів (картинки, шрифти, дані) підуть у результат без змін");
+          if (skipped) parts.push(", пропущено ", { b: String(skipped) });
+          parts.push(".");
+          setZipStatus(parts, "Пропускаються папки node_modules, .git, dist, build та бінарні або завеликі файли. Кнопка «Завантажити все» збере очищений проєкт назад в один zip з тією самою структурою папок.");
+          toast("ZIP розпаковано: " + codeCount + " файлів з кодом");
+        }, function () {
+          setZipStatus(["Не вдалося відкрити ", { b: lastZipBase + ".zip" }, ": схоже, це пошкоджений архів або формат, який браузер не підтримує."]);
+          toast("Не вдалося відкрити zip-архів");
+        });
+      }
+
+      function addFiles(fileList) {
+        var arr = Array.prototype.slice.call(fileList || []);
+        if (!arr.length) return;
+        var tasks = arr.map(function (file) {
+          if (/\.zip$/i.test(file.name)) return addZipArchive(file);
+          return readSingleFile(file);
+        });
+        Promise.all(tasks).then(function () {
+          if (files.length) selectedId = files[files.length - 1].id;
+          renderList(); renderStats(); renderPreview();
+        });
+      }
+
+      /* ---------- список файлів ---------- */
+      var ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+      var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+
+      function renderList() {
+        var list = $("file-list");
+        list.innerHTML = "";
+        if (!files.length) {
+          var p = document.createElement("p");
+          p.className = "empty-note";
+          p.textContent = "Тут зʼявляться вибрані файли з результатом очищення";
+          list.appendChild(p);
+          return;
+        }
+        files.forEach(function (f) {
+          var row = document.createElement("div");
+          row.className = "file-row" + (f.id === selectedId ? " selected" : "");
+          row.setAttribute("role", "button");
+          row.tabIndex = 0;
+
+          var ic = document.createElement("div");
+          ic.className = "ficon";
+          ic.textContent = extOf(f.name);
+
+          var meta = document.createElement("div");
+          meta.className = "fmeta";
+          var nm = document.createElement("div");
+          nm.className = "fname mono";
+          nm.textContent = f.path || f.name;
+          nm.title = f.path || f.name;
+          var sub = document.createElement("div");
+          sub.className = "fsub";
+          if (f.error) {
+            sub.innerHTML = "";
+            var bad = document.createElement("span");
+            bad.className = "bad"; bad.textContent = f.error;
+            sub.appendChild(bad);
+          } else {
+            var pct = f.src.length ? Math.round((1 - byteSize(f.cleaned) / Math.max(1, byteSize(f.src))) * 100) : 0;
+            sub.textContent = LANGS[f.lang].name + " · ";
+            var good = document.createElement("span");
+            good.className = "good";
+            good.textContent = "−" + f.comments + " коментарів" + (pct > 0 ? " · −" + pct + "% розміру" : "");
+            sub.appendChild(good);
+          }
+          meta.appendChild(nm); meta.appendChild(sub);
+
+          var dl = document.createElement("button");
+          dl.className = "icon-btn"; dl.title = "Завантажити очищений файл"; dl.innerHTML = ICON_DL;
+          dl.disabled = !!f.error;
+          dl.addEventListener("click", function (e) { e.stopPropagation(); downloadFile(f); });
+
+          var rm = document.createElement("button");
+          rm.className = "icon-btn danger"; rm.title = "Прибрати зі списку"; rm.innerHTML = ICON_TRASH;
+          rm.addEventListener("click", function (e) {
+            e.stopPropagation();
+            files = files.filter(function (x) { return x.id !== f.id; });
+            if (selectedId === f.id) selectedId = files.length ? files[files.length - 1].id : null;
+            renderList(); renderStats(); renderPreview();
+          });
+
+          row.appendChild(ic); row.appendChild(meta); row.appendChild(dl); row.appendChild(rm);
+          row.addEventListener("click", function () { selectedId = f.id; renderList(); renderPreview(); });
+          row.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectedId = f.id; renderList(); renderPreview(); }
+          });
+          list.appendChild(row);
+        });
+      }
+
+      function renderStats() {
+        var okFiles = files.filter(function (f) { return !f.error; });
+        var totalComments = okFiles.reduce(function (a, f) { return a + f.comments; }, 0);
+        var before = okFiles.reduce(function (a, f) { return a + byteSize(f.src); }, 0);
+        var after = okFiles.reduce(function (a, f) { return a + byteSize(f.cleaned); }, 0);
+        $("st-files").textContent = files.length;
+        $("st-comments").textContent = totalComments;
+        $("st-saved").textContent = before ? Math.max(0, Math.round((1 - after / before) * 100)) + "%" : "0%";
+        var hasPaths = okFiles.some(function (f) { return f.path && f.path !== f.name; });
+        $("btn-zip").disabled = !okFiles.length && !passthrough.length;
+        $("zip-hint").textContent = (okFiles.length > 1 || hasPaths || passthrough.length)
+          ? "Усе завантажиться одним zip-архівом зі збереженою структурою папок."
+          : "Очищена версія файла з тим самим іменем.";
+      }
+
+      /* ---------- перегляд ---------- */
+      function selected() {
+        for (var i = 0; i < files.length; i++) if (files[i].id === selectedId) return files[i];
+        return null;
+      }
+
+      function fillLangSelect(sel, value) {
+        sel.innerHTML = "";
+        Object.keys(LANGS).forEach(function (k) {
+          var op = document.createElement("option");
+          op.value = k; op.textContent = LANGS[k].name;
+          sel.appendChild(op);
+        });
+        sel.value = value;
+      }
+
+      function renderPreview() {
+        var f = selected();
+        var wrap = $("code-wrap");
+        $("pv-lang").disabled = !f;
+        $("btn-copy").disabled = !f || !!f.error;
+        $("btn-download").disabled = !f || !!f.error;
+        if (!f) {
+          $("pv-name").textContent = "Попередній перегляд";
+          $("pv-foot").hidden = true;
+          wrap.innerHTML = '<div class="placeholder-box" style="flex:1">Виберіть файл у списку, щоб побачити очищений код</div>';
+          return;
+        }
+        $("pv-name").textContent = f.path || f.name;
+        fillLangSelect($("pv-lang"), f.lang);
+        if (f.error) {
+          $("pv-foot").hidden = true;
+          wrap.innerHTML = "";
+          var box = document.createElement("div");
+          box.className = "placeholder-box"; box.style.flex = "1";
+          box.textContent = f.error;
+          wrap.appendChild(box);
+          return;
+        }
+        var text = viewMode === "after" ? f.cleaned : f.src;
+        var lines = text.split("\n");
+        var MAX = 3000;
+        var shown = lines.slice(0, MAX);
+        var nums = [];
+        for (var i = 1; i <= shown.length; i++) nums.push(i);
+        wrap.innerHTML = "";
+        var gutter = document.createElement("div");
+        gutter.className = "gutter";
+        gutter.textContent = nums.join("\n");
+        var pre = document.createElement("pre");
+        pre.className = "code";
+        pre.textContent = shown.join("\n") + (lines.length > MAX ? "\n… (показано перші " + MAX + " рядків з " + lines.length + ")" : "");
+        wrap.appendChild(gutter); wrap.appendChild(pre);
+        wrap.scrollTop = 0;
+
+        $("pv-foot").hidden = false;
+        $("pf-comments").textContent = f.comments;
+        $("pf-lines").textContent = f.removedLines;
+        var b = byteSize(f.src), a = byteSize(f.cleaned);
+        $("pf-size").textContent = fmtSize(b) + " → " + fmtSize(a);
+        $("pf-pct").textContent = b ? "(−" + Math.max(0, Math.round((1 - a / b) * 100)) + "%)" : "";
+      }
+
+      $("pv-lang").addEventListener("change", function () {
+        var f = selected();
+        if (!f) return;
+        f.lang = this.value;
+        f.error = null;
+        cleanFile(f);
+        renderList(); renderStats(); renderPreview();
+      });
+      $("seg-after").addEventListener("click", function () { setView("after"); });
+      $("seg-before").addEventListener("click", function () { setView("before"); });
+      function setView(v) {
+        viewMode = v;
+        $("seg-after").setAttribute("aria-selected", String(v === "after"));
+        $("seg-before").setAttribute("aria-selected", String(v === "before"));
+        renderPreview();
+      }
+
+      /* ---------- завантаження і копіювання ---------- */
+      function downloadBlob(blob, name) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      }
+      function downloadFile(f) {
+        if (f.error) return;
+        downloadBlob(new Blob([f.cleaned], { type: "text/plain;charset=utf-8" }), f.name);
+      }
+      $("btn-download").addEventListener("click", function () {
+        var f = selected(); if (f) downloadFile(f);
+      });
+      $("btn-copy").addEventListener("click", function () {
+        var f = selected(); if (!f || f.error) return;
+        var text = f.cleaned;
+        function done() { toast("Очищений код скопійовано"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+      });
+      function fallbackCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        ta.remove();
+      }
+
+      $("btn-zip").addEventListener("click", function () {
+        var okFiles = files.filter(function (f) { return !f.error; });
+        if (!okFiles.length && !passthrough.length) return;
+        var hasPaths = okFiles.some(function (f) { return f.path && f.path !== f.name; });
+        if (okFiles.length === 1 && !passthrough.length && !hasPaths) { downloadFile(okFiles[0]); return; }
+        var entries = [];
+        var used = {};
+        function place(path, data) {
+          var name = path;
+          if (used[name]) {
+            var dot = name.lastIndexOf(".");
+            name = dot > 0 ? name.slice(0, dot) + "-" + used[name] + name.slice(dot) : name + "-" + used[name];
+          }
+          used[path] = (used[path] || 0) + 1;
+          entries.push({ path: name, data: data });
+        }
+        okFiles.forEach(function (f) { place(f.path || f.name, enc.encode(f.cleaned)); });
+        passthrough.forEach(function (p) { place(p.path, p.data); });
+        var outName = lastZipBase ? lastZipBase + "-clean.zip" : "cleaned.zip";
+        downloadBlob(buildZipBlob(entries), outName);
+        toast("Архів " + outName + " готовий");
+      });
+
+      /* ---------- вкладки і вставка коду ---------- */
+      $("tab-files").addEventListener("click", function () { setTab("files"); });
+      $("tab-paste").addEventListener("click", function () { setTab("paste"); });
+      function setTab(which) {
+        $("tab-files").setAttribute("aria-selected", String(which === "files"));
+        $("tab-paste").setAttribute("aria-selected", String(which === "paste"));
+        $("pane-files").hidden = which !== "files";
+        $("pane-paste").hidden = which !== "paste";
+      }
+      fillLangSelect($("paste-lang"), "js");
+      $("paste-lang").addEventListener("change", function () {
+        var base = $("paste-name").value.replace(/\.[A-Za-z0-9]+$/, "") || "snippet";
+        $("paste-name").value = base;
+      });
+      $("btn-paste-add").addEventListener("click", function () {
+        var code = $("paste-area").value;
+        if (!code.trim()) { toast("Спочатку вставте код"); return; }
+        var lang = $("paste-lang").value;
+        var base = ($("paste-name").value || "snippet").trim().replace(/\.[A-Za-z0-9]+$/, "") || "snippet";
+        var name = base + "." + LANGS[lang].ext;
+        var f = { id: nextId++, name: name, path: name, lang: lang, src: code, cleaned: "", comments: 0, removedLines: 0, error: null };
+        files.push(f);
+        cleanFile(f);
+        selectedId = f.id;
+        setTab("files");
+        renderList(); renderStats(); renderPreview();
+        toast("Готово: видалено " + f.comments + " коментарів");
+      });
+
+      /* ---------- приклад ---------- */
+      var SAMPLE = [
+        "// Головний модуль застосунку",
+        "// TODO: винести конфіг в окремий файл",
+        "",
+        "const API_URL = \"https://api.example.com/v1\"; // базовий адрес бекенду",
+        "const nickRe = /^[a-z0-9_]{3,16}$/i; /* валідація нікнейму */",
+        "",
+        "/**",
+        " * Рахує суму кошика.",
+        " * @param {Array} items товари",
+        " * @returns {number} сума",
+        " */",
+        "function total(items) {",
+        "  // порожній кошик = нуль",
+        "  if (!items.length) return 0;",
+        "  const label = `Сума: ${items.length} шт.`; // підпис для чека",
+        "  return items.reduce((acc, it) => acc + it.price, 0);",
+        "}",
+        "",
+        "/* Старий варіант, лишив про всяк випадок",
+        "function totalOld(items) { return 42; }",
+        "*/",
+        "export { total, API_URL };",
+        ""
+      ].join("\n");
+
+      $("btn-sample").addEventListener("click", function (e) {
+        e.stopPropagation();
+        var f = { id: nextId++, name: "app.js", path: "app.js", lang: "js", src: SAMPLE, cleaned: "", comments: 0, removedLines: 0, error: null };
+        files.push(f);
+        cleanFile(f);
+        selectedId = f.id;
+        renderList(); renderStats(); renderPreview();
+        toast("Приклад додано: видалено " + f.comments + " коментарів");
+      });
+
+      renderList(); renderStats(); renderPreview();
+    </script>
+  </body>
+</html>
