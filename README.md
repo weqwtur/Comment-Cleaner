@@ -1,2 +1,4 @@
 # Comment-Cleaner
-Basically, if your AI writes a ton of comments in your project and you feel embarrassed about it, this tool is exactly what you need, just upload the whole project, and it will strip out the comments
+Крч, якщо ваш ші пише надто багато коментарів в вашому проєкті, і ви соромитеся цього (ну понятне діло), тоді цей проєкт, це, те, що вам потрібно, можна просто загрузити цілий проєкт, і воно очистить усі коментарі
+
+П.с. ну код теж цей навайбкоджений + коментарі в проєкті не почищені :) та все ж штука корисна
